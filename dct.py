@@ -3,7 +3,7 @@ from tkinter import W
 from tkinter.filedialog import SaveFileDialog
 from scipy.io import wavfile
 from scipy.fftpack import dct, idct, fft, fftfreq, ifft
-import pywt
+# import pywt
 import numpy as np
 import matplotlib.pyplot as plt
 import wave
@@ -15,7 +15,7 @@ def normalizeForWav(data):
     return np.int16(data.real)
 
 
-def draw_time(path):
+def draw_time(path, filename):
     f = wave.open(path, 'rb')
     params = f.getparams()
     params = f.getparams()
@@ -33,6 +33,7 @@ def draw_time(path):
     plt.plot(time, waveData[0, :], c='b')
     plt.xlabel('time')
     plt.ylabel('am')
+    plt.savefig('./%s.jpg' % filename)
     plt.show()
 
 
@@ -43,8 +44,9 @@ def noise(data):
 
 class DCT_Embed(object):
     def __init__(self, background, watermark, block_size, alpha):
-        print(np.shape(background))
-        print(np.shape(watermark))
+        # watermark = np.where(watermark0 < np.mean(watermark0),0, 1)  # watermark进行(归一化的)二值化
+        # print(np.shape(background))
+        # print(np.shape(watermark))
         b_h, b_w = background.shape[:2]
         w_h, w_w = watermark.shape[:2]
         assert w_h <= b_h / block_size, \
@@ -89,17 +91,17 @@ class DCT_Embed(object):
         """
         print("--------dct_embed start-----------------")
         temp = watermark.flatten()
-        assert temp.max() == 1 and temp.min() == 0, "为方便处理，请保证输入的watermark是被二值归一化的"
+        # assert temp.max() == 1 and temp.min() == 0, "为方便处理，请保证输入的watermark是被二值归一化的"
         result = dct_data.copy()
         for h in range(watermark.shape[0]):
             for w in range(watermark.shape[1]):
-                k = self.k1 if watermark[h, w] == 1 else self.k2
+                # k = self.k1 if watermark[h, w] == 1 else self.k2
                 # 查询块(h,w)并遍历对应块的中频系数（主对角线），进行修改
                 # 查询块h，并只改变对应块的一个元素
                 # result[h, 0, 0] = dct_data[h, 0, 0]+self.alpha*k[0]
                 for i in range(self.block_size):
                     result[h, i, self.block_size_y-1] = dct_data[h,
-                                                                 i, self.block_size_y-1]+self.alpha*k[i]
+                                                                 i, self.block_size_y-1]+self.alpha*watermark[h][w]
         print("--------dct_embed end-----------------")
         return result
 
@@ -112,11 +114,50 @@ class DCT_Embed(object):
         result = None
         h = dct_data.shape[0]
         for i in range(h):
-            print("--------第", i, "轮-----------------")
+            print("--------Round:", i, "-----------------")
             block = idct(dct_data[i, ...], type=3, norm="ortho")
             result = block if i == 0 else np.vstack((result, block))
         print("--------idct_embed end-----------------")
         return result
+
+    def dct_extract(self, synthesis, watermark_size, background):
+        """
+        从嵌入水印的音频中提取水印
+        :param synthesis: 嵌入水印的空域音频
+        :param watermark_size: 水印大小
+        :return: 提取的空域水印
+        """
+        w_h, w_w = watermark_size
+        recover_watermark = np.zeros(shape=watermark_size)
+        synthesis_dct_blocks = self.dct_blk(background=synthesis)
+        background_dct_blocks = self.dct_blk(background=background)
+        p = np.zeros(self.block_size)
+        for h in range(w_h):
+            for w in range(w_w):
+                for k in range(self.block_size):
+                    recover_watermark[h, w] = (
+                        synthesis_dct_blocks[h, k, self.block_size_y-1] - background_dct_blocks[h, k, self.block_size_y-1])/self.alpha
+                #     p[k] = synthesis_dct_blocks[h, k, self.block_size_y - 1]
+                # if corr2(p, self.k1) > corr2(p, self.k2):
+                #     recover_watermark[h, w] = 1
+                # else:
+                #     recover_watermark[h, w] = 0
+        return recover_watermark
+
+
+def mean2(x):
+    y = np.sum(x) / np.size(x)
+    return y
+
+
+def corr2(a, b):
+    """
+    相关性判断
+    """
+    a = a - mean2(a)
+    b = b - mean2(b)
+    r = (a * b).sum() / np.sqrt((a * a).sum() * (b * b).sum())
+    return r
 
 
 if __name__ == "__main__":
@@ -131,12 +172,11 @@ if __name__ == "__main__":
     # draw_time("piano.wav")
     # draw_time("piano_dct.wav")
 
-    alpha = 10
+    alpha = 0.1
     block_size = 4
     # 1.数据读取
     samplerate_wm, data_wm = wavfile.read("piano_3s.wav")
-    data_wm = np.where(data_wm < np.mean(data_wm),
-                       0, 1)  # watermark进行(归一化的)二值化
+    # data_wm = np.where(data_wm < np.mean(data_wm),0, 1)  # watermark进行(归一化的)二值化
     samplerate_bg, data_bg = wavfile.read("buddy_19s.wav")
     if((np.shape(data_bg)[0] % block_size) != 0):
         data_bg = np.r_[data_bg, np.zeros(
@@ -149,22 +189,38 @@ if __name__ == "__main__":
     # 2.dct
     dct_embed = DCT_Embed(background=data_bg, watermark=data_wm,
                           block_size=block_size, alpha=alpha)
-    background_dct_blocks = dct_embed.dct_blk(background=data_bg)
-    print(np.shape(background_dct_blocks))
-    embed_wm_blocks = dct_embed.dct_embed(
-        dct_data=background_dct_blocks, watermark=data_wm)
-    synthesis = dct_embed.idct_embed(dct_data=embed_wm_blocks)
-    data = normalizeForWav(synthesis)
-    wavfile.write("piano_dct.wav", samplerate_bg, data)
+    # background_dct_blocks = dct_embed.dct_blk(background=data_bg)
+    # # print(np.shape(background_dct_blocks))
+    # embed_wm_blocks = dct_embed.dct_embed(
+    #     dct_data=background_dct_blocks, watermark=data_wm)
+    # synthesis = dct_embed.idct_embed(dct_data=embed_wm_blocks)
+    # data = normalizeForWav(synthesis)
+    # wavfile.write("piano_dct.wav", samplerate_bg, data)
 
-    samplerate0, data0 = wavfile.read("buddy_19s.wav")
-    print(np.shape(data0))
-    samplerate, data = wavfile.read("piano_dct.wav")
-    print(np.shape(data))
-    data = data[:, 0]
-    print(np.shape(data))
-    print(data0, data)
-    wavfile.write("piano_dct.wav", samplerate, data)
-    draw_time("piano.wav")
-    draw_time("buddy_19s.wav")
-    draw_time("piano_dct.wav")
+    # # samplerate0, data0 = wavfile.read("buddy_19s.wav")
+    # # print(np.shape(data0))
+    # # samplerate, data = wavfile.read("piano_dct.wav")
+    # # print(np.shape(data))
+    # # data = data[:, 0]
+    # # print(np.shape(data))
+    # # print(data0, data)
+    # # wavfile.write("piano_dct.wav", samplerate, data)
+    # draw_time("piano_3s.wav","piano_3s")
+    # draw_time("buddy_19s.wav","buddy_19s")
+    # draw_time("piano_dct.wav","piano_dct")
+
+    # 3.提取水印
+    samplerate_syn, data_syn = wavfile.read("bunny_compress.wav")
+    if((np.shape(data_syn)[0] % block_size) != 0):
+        data_syn = np.r_[data_syn, np.zeros(
+            block_size-(np.shape(data_syn)[0] % block_size))]
+    if(data_syn.ndim == 1):
+        a = np.array(np.zeros(data_syn.shape[0])).T
+        data_syn = np.c_[np.array([data_syn]).T, a]
+    print(np.shape(data_syn))
+    extract_watermark = dct_embed.dct_extract(
+        synthesis=data_syn, watermark_size=data_wm.shape, background=data_bg)
+    data = normalizeForWav(extract_watermark)
+    wavfile.write("compress_ext.wav", samplerate_wm, data)
+    draw_time("piano_3s.wav", "piano_3s")
+    draw_time("compress_ext.wav", "compress_ext")
