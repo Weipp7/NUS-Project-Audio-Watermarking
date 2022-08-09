@@ -2,15 +2,15 @@
 ## Audio-Watermarking-using-DCT
 
 采用图像dct的思路对音频文件进行分块，并将水印音频分块嵌入原音频文件中  
-目前只做了Embedding Watermark
+我的工作
 
-## 后续待完善内容：
+a.Embedding Watermark
 
-a.Extracting Watermark
+b.Extracting Watermark
 
-b.PSNR、SNR 和 Pearson 指数评估技术的性能
+c.对音频信号进行攻击，采取add noise,compress,reverbe,speedup几种攻击方式测试robustness
 
-c.对音频信号进行攻击，测试抗干扰性
+d.PSNR、NCC和 相关系数 指数评估技术的性能
 
 ## 食用方法：  
 需要以下工具：  
