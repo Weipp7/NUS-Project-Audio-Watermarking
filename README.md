@@ -22,5 +22,7 @@ d.PSNR、NCC和 相关系数 指数评估技术的性能
  ## NOTE!
  在时间性能方面还有欠缺，食用过程可能有亿点点慢
  
+ 这是NUS暑期项目的一部分，整体项目实现了用DCT,DWT,LSB三种方法添加水印到音频中，并测试robustness。
+ [项目仓库地址](https://github.com/Eipi15926/Audio-Steganography-and-Watermark/tree/master)
  
  
