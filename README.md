@@ -25,6 +25,7 @@ d.PSNR、NCC和 相关系数 指数评估技术的性能
  这是NUS暑期项目的一部分，整体项目实现了用DCT,DWT,LSB三种方法添加水印到音频中，并测试robustness。(每个分支对应着一个方法）
  
  [项目仓库地址](https://github.com/Eipi15926/Audio-Steganography-and-Watermark/tree/master)
+ [Reference & Our Work](https://www.notion.so/5ffb5a886980429794fa265240bc0fb9?v=177c555b270246e0bdd788763e997c14)
 
  另：submit文件夹里是项目最终的提交结果，poster和short video都出自我手（自豪）
  
