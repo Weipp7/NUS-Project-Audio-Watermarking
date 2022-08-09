@@ -1,0 +1,54 @@
+<p1><b>Task 1:Finding out the Addresses of libc Functions</b></p1>
+<br>We used the p command to print the addresses of system() and exit() functions.</br>
+<br>As follow:</br>
+<br><img src="https://user-images.githubusercontent.com/73998546/180268460-177875dd-b562-4422-b566-bb3b745c60f3.png"></br>
+
+<br><p1><b>Task 2: Putting the shell string in the memory</b></p1></br>
+I uesd the method inntask 2 to put the shell string in the memory.
+First define a new shell variable MYSHELL = /bin/sh,then I will use the addresses of this variable as an argument to system() call.
+Following the code in task3.2, we could compile the code and print the addresses of MYSHELL.
+<br><img src="https://user-images.githubusercontent.com/73998546/180268512-55e72405-0c67-4d06-ad70-26dafff3ab36.png"></br>
+
+<p1><b>Task 3: Launching the Attack </b></p1>
+According to the above two tasks,we get thses informations:
+0xf7e12420 <system>
+0xf7e04f80 <exit>
+0xffffd3f6 bin/sh
+So it is natural to fill them in the corresponding address.
+After we should consider the stack frame structure to figure out X,Y and Z.
+I think the stack frame as this:
+<br><img src="https://user-images.githubusercontent.com/73998546/180268579-bb65767b-38ef-46f6-a582-a8ae28ab4e1e.jpg"></br>
+Since we are going to excute the function system(),the return address should be loaded the system_addr.
+So Y should be the relative offset of ret,Y = ebp - buff + 4.
+And then, considering the addresses of the variable MYSHELL as an argument to system() call,I put it behind the system().
+So X = ebp - buff + 8
+Then execute function exit(),I put it behind MYSHELL.
+So Z = ebp - buff + 12
+Let's try to run
+<br><img src="https://user-images.githubusercontent.com/73998546/180268633-efae3337-cbbf-4afa-a968-71db83adbc03.png"></br>
+<br><img src="https://user-images.githubusercontent.com/73998546/180268664-3961c817-d295-4d7f-8ec5-24cb980a16fc.png"></br>
+Opps maybe something wrong.We check it.I think the system_addr won't be wrong,that's the start of the execution programm.
+So maybe X or Z is wrong.At present I have no idea,so we could try to change X and Z.
+I first tried swapping the values of X and Z, after that I ran the program.Then it works!
+<br><img src="https://user-images.githubusercontent.com/73998546/180268686-d0fa33b2-2ddd-4603-b275-6b592eb9e446.png"></br>
+<br><img src="https://user-images.githubusercontent.com/73998546/180268698-01b52cc2-00e2-4320-84ad-974f4fef5bd7.png"></br>
+It's amazing,I wonder how.After I search on Internet about the stack frame structure,then I find this:
+<br><img src="https://user-images.githubusercontent.com/73998546/180268707-6095327f-d6bf-409c-a99f-add9f052684a.png"></br>
+So the position "ebp - buff + 8" to be filled in is the return address of the system.
+The return address of system is followed by the parameters,and MYSHELL is passed as a parameter to system.
+
+<p1><b>Attack variation 1: Is the exit() function really necessary?</b></p1>
+<br>I think it's not really necessary.
+Actually, I found that whether it is to remove the exit, or to change the position of the exit, such as making Z = ebp - buff + 4 or Z = ebp - buff + 16,
+can successfully obtain root privileges. 
+My idea is that the main function of this experiment is to pass MYSHELL as a parameter and run the system function at the same time. 
+This has little to do with exit. As long as the previous steps are successfully executed, root privileges can be obtained.
+Even if I remove exit, it still gets root shell and exits successfully, this is what I have observed.
+According to the paper,the function exit() seems to help the shellcode to quit without a trace,but I could not find somewhere different with the previous.</br>
+
+<p1><b>Attack variation 2: change the file name of retlib to a different name,Repeat the attack (without changing the content of badfile). Will your attack succeed or not?</b></p1>
+<br>After rename the file name , my attack failed.
+In fact, when the program is executed, the name of the program is passed on the stack first,
+ and then the other variables in the program are passed on the stack. So when we only change the length of the program name, 
+ the addresses of the other environment variables will be extended backwards,and our badfile isn't changeg, which will cause us to be unable to access the correct environment variables
+ , so the attack fails.</br>

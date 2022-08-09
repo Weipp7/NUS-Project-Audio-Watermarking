@@ -1,0 +1,33 @@
+<p1><b>Task 1: Getting Familiar with Shellcode</b></p1>
+<br>typing make in terminal,then Two binaries will be created, a32.out (32-bit) and a64.out (64-bit).Run them and we observe that we get the root shell.</br>
+<img src="https://user-images.githubusercontent.com/73998546/180107462-523e17bd-07d2-462a-96e8-111c749c182f.png">
+
+<br><p1><b>Task 2:Understanding the Vulnerable Program</b></p1></br>
+<br>Since the  compilation and setup commands are already included in Makefile,we just need to type make to execute those commands.</br>
+
+<p1><b>Task 3:Launching Attack on 32-bit Program </b><p1>
+<br>Our purpose is to implement malicious code by exploiting buffer overflows and eventually gain root privileges.</br>
+<br>We can see that in the exploit.py file, we need to fill in several parts, namely shellcode, start, ret and offset.</br>
+<br>First, we fill in the 32-bit corresponding malicious code to obtain root shell.</br>
+<img src="https://user-images.githubusercontent.com/73998546/180107547-06916f1c-958f-42ee-96d6-a1df1fc6f3fd.png">
+<br>Then we analyze the stack frame structure in the function bof:</br>
+<img src="https://user-images.githubusercontent.com/73998546/180107561-1b604e81-edcd-4550-bbf3-441ecda45872.jpg">
+<br>We consider putting shellcode at the end of badfile, so "start = 517-len(shellcode)"</br>
+<br>After that we need to determine the position of ret in badfile, that is offset. We consider offset = ebp - &buffer + 4 , so the first step is to determine the values of ebp and &buffer.</br>
+<br>We print out the ebp value and the buffer’s address through the gdb debugging tool.</br>
+
+<br>According to the note1 in the task book,we need to use next to execute a few instructions and stop after the ebp register is modified to point to the stack frame of the bof() function.</br>
+<img src="https://user-images.githubusercontent.com/73998546/180107567-85507cee-1612-4d98-baf6-f9344891191f.png">
+<br>buff = 0xffffca7c</br>
+<br>ebp = 0xffffcae8</br>
+
+<br>The value of ret (return address) should jump after new ret and before shellcode. This ensures that the shellcode is executed.</br>
+<br>so ret = ebp + n(n>=8)</br>
+<br>But I found that when n=8, the program reported an error:segmentation fault.</br>
+<br>According to the note2 in the task book,the real stack frame value is larger than the value of the gdb runtime,so we should add an offset.</br>
+<br>After many attempts, I found that offsets between 200-300 can get a root shell.</br>
+<br>Now let's check it!</br>
+<img src="https://user-images.githubusercontent.com/73998546/180107577-1284062f-b37b-4c0a-8919-e0621ccebf57.png">
+<br>OK!I obtain the root shell!</br>
+
+
