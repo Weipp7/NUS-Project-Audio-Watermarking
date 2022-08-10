@@ -28,5 +28,5 @@ d.PSNR、NCC和 相关系数 指数评估技术的性能
  
  [Reference & Our Work](https://www.notion.so/5ffb5a886980429794fa265240bc0fb9?v=177c555b270246e0bdd788763e997c14)
 
- 另：submit文件夹里是项目最终的提交结果，poster和short video都出自我手（自豪）
+ 另：submit文件夹里是项目最终的提交结果（自豪）
  
